@@ -56,6 +56,10 @@ async def encrypt_route_rsa(request: Request):
     encoded_data = encrypt_with_rsa(data)
     return {'encrypted_data': encoded_data}
 
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
 
 @app.post('/encryptaes')
 async def encrypt_route(request: Request):
