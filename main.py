@@ -17,22 +17,21 @@ def encrypt_with_rsa(data):
     # Load the public key from the given file path
     with open(public_key_path, 'rb') as key_file:
         pem_data = key_file.read()
-        public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+        public_key = RSA.import_key(pem_data)
 
-    cipher = public_key.encrypt(
-        data.encode('utf-8'),
-        padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
-    )
-    encoded_data = base64.b64encode(cipher).decode('utf-8')
+    cipher = PKCS1_v1_5.new(public_key)
+    encrypted_data = cipher.encrypt(data.encode('utf-8'))
+    encoded_data = base64.b64encode(encrypted_data).decode('utf-8')
     return encoded_data
 
 
 def encrypt_by_symmetric_key(json_data, decrypted_sek):
+    #json_data = json.dumps(json_data)
     sek_byte = base64.b64decode(decrypted_sek)
-    aes_key = Cipher(algorithms.AES(sek_byte), modes.ECB(), backend=default_backend()).encryptor()
+    aes_key = AES.new(sek_byte, AES.MODE_ECB)
     try:
-        padded_data = sym_padding.pad(json_data.encode(), algorithms.AES.block_size)
-        encrypted_bytes = aes_key.update(padded_data) + aes_key.finalize()
+        padded_data = pad(json_data.encode(), AES.block_size)
+        encrypted_bytes = aes_key.encrypt(padded_data)
         encrypted_json = base64.b64encode(encrypted_bytes).decode()
         return encrypted_json
     except Exception as e:
@@ -42,9 +41,11 @@ def encrypt_by_symmetric_key(json_data, decrypted_sek):
 def decrypt_sek_with_appkey(encrypted_sek, base64_appkey):
     appkey = base64.b64decode(base64_appkey)
     encrypted_sek = base64.b64decode(encrypted_sek)
-    cipher = Cipher(algorithms.AES(appkey), modes.ECB(), backend=default_backend()).decryptor()
-    decrypted_sek = cipher.update(encrypted_sek) + cipher.finalize()
-    unpadded_sek = sym_padding.unpad(decrypted_sek, algorithms.AES.block_size)
+    cipher = AES.new(appkey, AES.MODE_ECB)
+    decrypted_sek = cipher.decrypt(encrypted_sek)
+    print(decrypted_sek)
+    unpadded_sek = unpad(decrypted_sek, AES.block_size)
+    print(unpadded_sek)
     base64_decoded_sek = base64.b64encode(unpadded_sek).decode('utf-8')
     return base64_decoded_sek
 
