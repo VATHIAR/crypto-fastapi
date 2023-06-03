@@ -1,4 +1,5 @@
 pycryptodome
+python-multipart
 cryptography
 qrcode
 PyMuPDF
