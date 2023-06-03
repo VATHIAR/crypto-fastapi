@@ -1,4 +1,13 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image
+import qrcode
+import barcode
+from barcode.writer import ImageWriter
+import fitz as fit
+from io import BytesIO
+import shutil
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
@@ -84,3 +93,71 @@ async def decrypt_route(request: Request):
   appkey = data['appkey']
   decrypted_sek = decrypt_sek_with_appkey(encrypted_sek, appkey)
   return {'decrypted_sek': decrypted_sek}
+
+@app.post("/edit_pdf")
+async def edit_pdf(pdffile: UploadFile, qrData: str, barcodeData: str):
+    # Save the uploaded PDF file
+    with open("input.pdf", "wb") as f:
+        shutil.copyfileobj(pdffile.file, f)
+
+    qr = qrcode.QRCode(
+        version=None,  # Set version to None for automatic sizing
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=0,
+    )
+    qr.add_data(qrData)
+    qr.make(fit=True)
+    qr_image = qr.make_image(fill_color="black", back_color="white")
+    qr_image = qr_image.resize((136, 136))
+    qr_image.save("qr_code.png")
+
+    ean = barcode.get("ean13", barcodeData, writer=ImageWriter())
+    # Now we look if the checksum was added
+    ean.get_fullcode()
+    ean.writer.dpi = 121
+    filename = ean.save("ean13")
+    options = dict(text_distance=3.2)
+    filename = ean.save("bar_code", options)
+
+    imageQr = Image.open("qr_code.png")
+    imageBAr = Image.open("bar_code.png")
+
+    flipped_image = imageQr.transpose(Image.FLIP_TOP_BOTTOM)
+    flipped_image.save("qr_code.png")
+    flipped_image = imageBAr.transpose(Image.FLIP_TOP_BOTTOM)
+    flipped_image.save("bar_code.png")
+
+    doc = fit.open("input.pdf")
+    x = 2020
+    y = 301
+    width = 330
+    height = 330
+
+    rect = fit.Rect(x, y, x + width, y + height)
+
+    x = 1050
+    y = -2250
+    width = 350
+    height = 350
+    rect1 = fit.Rect(x, y, x + width, y + height)
+
+    image_path = "qr_code.png"
+    with open(image_path, "rb") as f:
+        image_data = f.read()
+
+    image_path = "bar_code.png"
+    with open(image_path, "rb") as f:
+        image_databar = f.read()
+
+    image_stream = BytesIO(image_data)
+    image_databar = BytesIO(image_databar)
+
+    page = doc[0]
+    for Page in doc:
+        page.insert_image(rect, stream=image_stream)
+        page.insert_image(rect1, stream=image_databar)
+    doc.save("new1.pdf")
+
+    # Return the modified PDF file
+    return FileResponse("new1.pdf", media_type="application/pdf")
