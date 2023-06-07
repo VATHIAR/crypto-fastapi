@@ -120,13 +120,21 @@ async def decrypt_route(request: Request):
   return {'decrypted_sek': decrypted_sek}
 
 
-@app.post('/generateQR')
-async def decrypt_route(request: Request):
-  data = await request.json()
-  encrypted_sek = data['encrypted_sek']
-  appkey = data['appkey']
-  decrypted_sek = decrypt_sek_with_appkey(encrypted_sek, appkey)
-  return {'decrypted_sek': decrypted_sek}
+@app.get("/generate_qr/{qr_data}")
+async def generate_qr(qr_data: str):
+    qr = qrcode.QRCode(
+        version=None,  # Set version to None for automatic sizing
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=0,
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    qr_image = qr.make_image(fill_color="black", back_color="white")
+    qr_image = qr_image.resize((136, 136))
+    qr_image.save("qr_code.png")
+    
+    return FileResponse("qr_code.png", media_type="image/png")
 
 @app.post("/edit_pdf")
 async def edit_pdf(pdffile: UploadFile, qrData: str, barcodeData: str):
