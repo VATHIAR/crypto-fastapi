@@ -58,12 +58,37 @@ def decrypt_sek_with_appkey(encrypted_sek, base64_appkey):
   return base64_decoded_sek
 
 
+
+
 # Default root endpoint
 @app.get("/")
 async def root():
   return {"message": "Hello world"}
 
-
+@app.get("/generate_qr")
+def generate_qr(QRdata: str):
+    qr = qrcode.QRCode(
+        version=None,  # Set version to None for automatic sizing
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=0,
+    )
+    qr.add_data(QRdata)
+    qr.make(fit=True)
+    qr_image = qr.make_image(fill_color="black", back_color="white")
+    qr_image = qr_image.resize((136, 136))
+    
+    # Create an in-memory buffer to store the image data
+    img_buffer = io.BytesIO()
+    qr_image.save(img_buffer, format="PNG")
+    img_buffer.seek(0)
+    
+    return {
+        "file": img_buffer,
+        "filename": "qr_code.png"
+    }
+  
+  
 # Example path parameter
 @app.get("/name/{name}")
 async def name(name: str):
@@ -87,6 +112,15 @@ async def encrypt_route(request: Request):
 
 
 @app.post('/decryptsek')
+async def decrypt_route(request: Request):
+  data = await request.json()
+  encrypted_sek = data['encrypted_sek']
+  appkey = data['appkey']
+  decrypted_sek = decrypt_sek_with_appkey(encrypted_sek, appkey)
+  return {'decrypted_sek': decrypted_sek}
+
+
+@app.post('/generateQR')
 async def decrypt_route(request: Request):
   data = await request.json()
   encrypted_sek = data['encrypted_sek']
