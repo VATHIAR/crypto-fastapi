@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.responses import FileResponse
+from fastapi import HTTPException
 from PIL import Image
 import qrcode
 import barcode
