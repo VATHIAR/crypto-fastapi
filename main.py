@@ -7,6 +7,8 @@ from barcode.writer import ImageWriter
 import fitz as fit
 from io import BytesIO
 import shutil
+import json
+import requests
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -208,3 +210,21 @@ async def edit_pdf(pdffile: UploadFile, qrData: str, barcodeData: str):
 
     # Return the modified PDF file
     return FileResponse("new1.pdf", media_type="application/pdf")
+  
+@app.get("/gstin-search/{gstin}")
+def gstin_search(gstin: str):
+    url = 'https://app.signalx.ai/apps/gst-verification/gstin-overview/'
+    response = requests.get(url + gstin)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Error retrieving GSTIN data")
+
+    json_data = json.loads(response.content.decode('utf-8'))
+
+    trade_name = json_data['trade_name']
+    principal_place_of_business = json_data['principal_place_of_business']
+
+    split_string = principal_place_of_business.split(',')[:6]
+
+    result = trade_name + ", " + ', '.join(split_string)
+
+    return result
