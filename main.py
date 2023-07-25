@@ -226,6 +226,6 @@ def gstin_search(gstin: str):
 
     split_string = principal_place_of_business.split(',')[:6]
 
-    result = trade_name + ": " + principal_place_of_business
+    result = trade_name + "\n" + principal_place_of_business
 
     return result
